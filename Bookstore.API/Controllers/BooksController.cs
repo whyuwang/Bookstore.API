@@ -11,12 +11,17 @@ namespace Bookstore.API.Controllers
     public class BooksController(BookstoreContext context) : ControllerBase
     {
         [HttpGet]
-        public async Task<ActionResult<IReadOnlyList<Book>>> GetBooks(string? keyword, string? sort)
+        public async Task<ActionResult<IReadOnlyList<Book>>> GetBooks(string? keyword, string? genre, string? sort)
         {
             var query = context.Books.AsQueryable();
             if (!string.IsNullOrWhiteSpace(keyword))
             {
                 query = query.Where(b => b.Title.Contains(keyword) || b.Isbn.Contains(keyword) || b.Author.Contains(keyword));
+            }
+
+            if (!string.IsNullOrWhiteSpace(genre))
+            {
+                query = query.Where(b => b.Genre == genre);
             }
 
             query = (sort?.ToLower()) switch
@@ -36,7 +41,7 @@ namespace Bookstore.API.Controllers
         [HttpGet("{id:int}")]
         public async Task<ActionResult<Book>> GetBook(int id)
         {
-            var book = await context.Books.FindAsync(id);
+            var book = await context.Books.AsNoTracking().FirstOrDefaultAsync(b => b.Id == id);
             if (book == null)
             {
                 return NotFound();
