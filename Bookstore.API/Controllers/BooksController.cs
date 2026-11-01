@@ -11,9 +11,25 @@ namespace Bookstore.API.Controllers
     public class BooksController(BookstoreContext context) : ControllerBase
     {
         [HttpGet]
-        public async Task<ActionResult<IReadOnlyList<Book>>> GetBooks()
+        public async Task<ActionResult<IReadOnlyList<Book>>> GetBooks(string? keyword, string? sort)
         {
-            var books = await context.Books.ToListAsync();
+            var query = context.Books.AsQueryable();
+            if (!string.IsNullOrWhiteSpace(keyword))
+            {
+                query = query.Where(b => b.Title.Contains(keyword) || b.Isbn.Contains(keyword) || b.Author.Contains(keyword));
+            }
+
+            query = (sort?.ToLower()) switch
+            {
+                "title" => query.OrderBy(b => b.Title),
+                "title_desc" => query.OrderByDescending(b => b.Title),
+                "price" => query.OrderBy(b => b.Price),
+                "price_desc" => query.OrderByDescending(b => b.Price),
+                "date" => query.OrderBy(b => b.PublishedDate),
+                "date_desc" => query.OrderByDescending(b => b.PublishedDate),
+                _ => query.OrderBy(b => b.Id),
+            };
+            var books = await query.AsNoTracking().ToListAsync();
             return Ok(books);
         }
 
