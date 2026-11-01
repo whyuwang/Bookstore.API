@@ -1,4 +1,5 @@
 using Bookstore.API.Data;
+using Bookstore.API.Dtos;
 using Bookstore.API.Entities;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -9,19 +10,17 @@ namespace Bookstore.API.Controllers
     [ApiController]
     public class BooksController(BookstoreContext context) : ControllerBase
     {
-        private readonly BookstoreContext _context = context;
-
         [HttpGet]
-        public async Task<ActionResult<IReadOnlyList<Book>>> GetProducts()
+        public async Task<ActionResult<IReadOnlyList<Book>>> GetBooks()
         {
-            var books = await _context.Books.ToListAsync();
+            var books = await context.Books.ToListAsync();
             return Ok(books);
         }
 
         [HttpGet("{id:int}")]
-        public async Task<ActionResult<Book>> GetProduct(int id)
+        public async Task<ActionResult<Book>> GetBook(int id)
         {
-            var book = await _context.Books.FindAsync(id);
+            var book = await context.Books.FindAsync(id);
             if (book == null)
             {
                 return NotFound();
@@ -31,43 +30,48 @@ namespace Bookstore.API.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult<Book>> CreateBook(Book book)
+        public async Task<ActionResult<Book>> CreateBook(BookDto bookDto)
         {
-            _context.Books.Add(book);
-            await _context.SaveChangesAsync();
-            return CreatedAtAction(nameof(GetProduct), new { id = book.Id }, book);
+            var book = new Book
+            {
+                Title = bookDto.Title,
+                Isbn = bookDto.Isbn,
+                Publisher = bookDto.Publisher,
+                Author = bookDto.Author,
+                Genre = bookDto.Genre
+            };
+            context.Entry(book).CurrentValues.SetValues(bookDto);
+            context.Books.Add(book);
+            await context.SaveChangesAsync();
+            return CreatedAtAction(nameof(GetBook), new { id = book.Id }, book);
         }
 
         [HttpPut("{id:int}")]
-        public async Task<IActionResult> UpdateBook(int id, Book book)
+        public async Task<IActionResult> UpdateBook(int id, BookDto bookDto)
         {
-            if (id != book.Id)
-            {
-                return BadRequest();
-            }
-
-            if (await _context.Books.AnyAsync(b => b.Id == id))
+            var book = await context.Books.FindAsync(id);
+            if (book == null)
             {
                 return NotFound();
             }
 
-            _context.Entry(book).State = EntityState.Modified;
-            await _context.SaveChangesAsync();
+            context.Entry(book).CurrentValues.SetValues(bookDto);
+            await context.SaveChangesAsync();
             return NoContent();
         }
 
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> DeleteBook(int id)
         {
-            var book = await _context.Books.FindAsync(id);
+            var book = await context.Books.FindAsync(id);
             if (book == null)
             {
                 return NotFound();
             }
 
-            _context.Books.Remove(book);
-            await _context.SaveChangesAsync();
-            return NotFound();
+            context.Books.Remove(book);
+            await context.SaveChangesAsync();
+            return NoContent();
         }
     }
 }

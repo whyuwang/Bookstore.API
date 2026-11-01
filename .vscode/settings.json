@@ -1,3 +1,5 @@
 {
-    "dotnet.defaultSolution": "Bookstore.API.slnx"
+    "dotnet.defaultSolution": "Bookstore.API.slnx",
+    "sqltools.connections": [],
+    "sqltools.useNodeRuntime": true
 }
