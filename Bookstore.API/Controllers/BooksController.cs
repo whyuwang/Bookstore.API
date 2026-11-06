@@ -11,7 +11,8 @@ namespace Bookstore.API.Controllers
     public class BooksController(BookstoreContext context) : ControllerBase
     {
         [HttpGet]
-        public async Task<ActionResult<IReadOnlyList<Book>>> GetBooks(string? keyword, string? genre, string? sort)
+        [ProducesResponseType(typeof(IReadOnlyList<Book>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<IReadOnlyList<Book>>> GetBooks(string? keyword, string? genres, string? sort)
         {
             var query = context.Books.AsQueryable();
             if (!string.IsNullOrWhiteSpace(keyword))
@@ -19,9 +20,13 @@ namespace Bookstore.API.Controllers
                 query = query.Where(b => b.Title.Contains(keyword) || b.Isbn.Contains(keyword) || b.Author.Contains(keyword));
             }
 
-            if (!string.IsNullOrWhiteSpace(genre))
+            if (!string.IsNullOrWhiteSpace(genres))
             {
-                query = query.Where(b => b.Genre == genre);
+                var genreArray = genres.Split(",", StringSplitOptions.RemoveEmptyEntries);
+                if (genreArray.Length > 0)
+                {
+                    query = query.Where(b => genreArray.Contains(b.Genre));
+                }
             }
 
             query = (sort?.ToLower()) switch
@@ -39,6 +44,8 @@ namespace Bookstore.API.Controllers
         }
 
         [HttpGet("{id:int}")]
+        [ProducesResponseType(typeof(Book), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<Book>> GetBook(int id)
         {
             var book = await context.Books.AsNoTracking().FirstOrDefaultAsync(b => b.Id == id);
@@ -50,7 +57,17 @@ namespace Bookstore.API.Controllers
             return Ok(book);
         }
 
+        [HttpGet("genres")]
+        [ProducesResponseType(typeof(IReadOnlyList<string>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<IReadOnlyList<string>>> GetGenres()
+        {
+            var genres = await context.Books.Select(b => b.Genre).Distinct().ToListAsync();
+            return Ok(genres);
+        }
+
         [HttpPost]
+        [ProducesResponseType(typeof(Book), StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<Book>> CreateBook(BookDto bookDto)
         {
             var book = new Book
@@ -68,6 +85,9 @@ namespace Bookstore.API.Controllers
         }
 
         [HttpPut("{id:int}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> UpdateBook(int id, BookDto bookDto)
         {
             var book = await context.Books.FindAsync(id);
@@ -82,6 +102,8 @@ namespace Bookstore.API.Controllers
         }
 
         [HttpDelete("{id:int}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> DeleteBook(int id)
         {
             var book = await context.Books.FindAsync(id);
