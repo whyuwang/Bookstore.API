@@ -1,6 +1,7 @@
 using Bookstore.API.Data;
 using Bookstore.API.Dtos;
 using Bookstore.API.Entities;
+using Bookstore.API.Extensions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,25 +12,28 @@ namespace Bookstore.API.Controllers
     public class BooksController(BookstoreContext context) : ControllerBase
     {
         [HttpGet]
-        [ProducesResponseType(typeof(IReadOnlyList<Book>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<IReadOnlyList<Book>>> GetBooks(string? keyword, string? genres, string? sort)
+        [ProducesResponseType(typeof(PagedResponse<Book>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<PagedResponse<Book>>> GetBooks([FromQuery] BookQueryParameters parameters)
         {
             var query = context.Books.AsQueryable();
-            if (!string.IsNullOrWhiteSpace(keyword))
+            if (!string.IsNullOrWhiteSpace(parameters.Keyword))
             {
-                query = query.Where(b => b.Title.Contains(keyword) || b.Isbn.Contains(keyword) || b.Author.Contains(keyword));
+                query = query.Where(b =>
+                    b.Title.Contains(parameters.Keyword)
+                    || b.Isbn.Contains(parameters.Keyword)
+                    || b.Author.Contains(parameters.Keyword));
             }
 
-            if (!string.IsNullOrWhiteSpace(genres))
+            if (!string.IsNullOrWhiteSpace(parameters.Genres))
             {
-                var genreArray = genres.Split(",", StringSplitOptions.RemoveEmptyEntries);
+                var genreArray = parameters.Genres.Split(",", StringSplitOptions.RemoveEmptyEntries);
                 if (genreArray.Length > 0)
                 {
                     query = query.Where(b => genreArray.Contains(b.Genre));
                 }
             }
 
-            query = (sort?.ToLower()) switch
+            query = (parameters.Sort?.ToLower()) switch
             {
                 "title" => query.OrderBy(b => b.Title),
                 "title_desc" => query.OrderByDescending(b => b.Title),
@@ -39,8 +43,8 @@ namespace Bookstore.API.Controllers
                 "date_desc" => query.OrderByDescending(b => b.PublishedDate),
                 _ => query.OrderBy(b => b.Id),
             };
-            var books = await query.AsNoTracking().ToListAsync();
-            return Ok(books);
+            var pagedResponse = await query.AsNoTracking().ToPagedResponseAsync(parameters);
+            return Ok(pagedResponse);
         }
 
         [HttpGet("{id:int}")]
