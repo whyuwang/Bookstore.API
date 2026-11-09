@@ -3,11 +3,23 @@ namespace Bookstore.API.Dtos;
 public class PaginationParameters
 {
     private const int MaxPageSize = 50;
-    public int PageIndex { get; set; } = 1;
+
+    private int _pageIndex = 1;
+    public int PageIndex
+    {
+        get => _pageIndex;
+        set => _pageIndex = value < 1 ? _pageIndex : value;
+    }
+
     private int _pageSize = 3;
     public int PageSize
     {
-        get { return _pageSize; }
-        set { _pageSize = value > MaxPageSize ? MaxPageSize : value; }
+        get => _pageSize;
+        set => _pageSize = value switch
+        {
+            < 1 => _pageSize,
+            > MaxPageSize => MaxPageSize,
+            _ => value
+        };
     }
 }
